@@ -4,7 +4,6 @@ from typing import Tuple, Dict, Any, Optional, Callable, List
 import torch
 import torch.nn.functional as F
 
-
 class SequenceTestState:
     def __init__(self, batch_dim: int = 1):
         self.n_ok = 0
@@ -61,7 +60,8 @@ class SequenceTestState:
 class TextSequenceTestState(SequenceTestState):
     def __init__(self, input_to_text: Callable[[torch.Tensor], torch.Tensor],
                  output_to_text: Callable[[torch.Tensor], torch.Tensor], batch_dim: int = 1,
-                 max_bad_samples: int = 100, min_prefix_match_len: int = 1, eos_id: int = -1):
+                 max_bad_samples: int = 100, min_prefix_match_len: int = 1, eos_id: int = -1,
+                 dataset='none'):
         super().__init__(batch_dim)
         self.bad_sequences = []
         self.max_bad_samples = max_bad_samples
@@ -74,6 +74,13 @@ class TextSequenceTestState(SequenceTestState):
         self.eos_id = eos_id
         self.losses = []
         self.oks = []
+        if 'CFQ' in dataset:
+            self.dataset = 'CFQ'
+        elif 'COGS' in dataset:
+            self.dataset = 'COGS'
+        else:
+            self.dataset = 'none'
+        
 
     def set_eos_to_neginf(self, scores: torch.Tensor) -> torch.Tensor:
         id = self.eos_id if self.eos_id >= 0 else (scores.shape[-1] + self.eos_id)
@@ -122,7 +129,18 @@ class TextSequenceTestState(SequenceTestState):
         prefix_len = torch.minimum(prefix_len.clamp(min=self.min_prefix_match_len), data["out_len"])
         prefix_ok_mask = self.compare_direct((net_out[0], prefix_len), data["out"], prefix_len)
 
-        if len(self.bad_sequences) < self.max_bad_samples:
+        for i in range(net_out[0].shape[1]):
+            t_in, t_ref, t_out = self.sample_to_text(net_out, data, i)
+            s = [t_in, t_ref, t_out]
+
+            if self.dataset == 'CFQ':
+                ...
+            elif self.dataset == 'COGS':
+                ...
+
+            self.bad_sequences.append(s)
+
+        if False: #if len(self.bad_sequences) < self.max_bad_samples:
             t = torch.nonzero(~ok_mask).squeeze(-1)[:self.max_bad_samples - len(self.bad_sequences)]
 
             for i in t:
@@ -144,8 +162,7 @@ class TextSequenceTestState(SequenceTestState):
 
     def plot(self) -> Dict[str, Any]:
         res = super().plot()
-        res["mistake_examples"] = framework.visualize.plot.TextTable(["Input", "Reference", "Output", "Prefix match"] +\
-                                                                     (["Oracle match"] if self.oracle_available else []),
+        res["mistake_examples"] = framework.visualize.plot.TextTable(["Input", "Reference", "Output"],
                                                                      self.bad_sequences)
         res["accuracy/prefix"] = self.n_prefix_ok / self.n_total
 
@@ -161,9 +178,9 @@ class TextSequenceTestState(SequenceTestState):
 class TypedTextSequenceTestState(TextSequenceTestState):
     def __init__(self, input_to_text: Callable[[torch.Tensor], torch.Tensor],
                  output_to_text: Callable[[torch.Tensor], torch.Tensor], type_names: List[str], batch_dim: int = 1,
-                 max_bad_samples: int = 100):
+                 max_bad_samples: int = 100, dataset='none'):
 
-        super().__init__(input_to_text, output_to_text, batch_dim, max_bad_samples)
+        super().__init__(input_to_text, output_to_text, batch_dim, max_bad_samples, dataset=dataset)
         self.type_names = type_names
 
         self.count_per_type = {}

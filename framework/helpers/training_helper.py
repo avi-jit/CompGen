@@ -14,6 +14,7 @@ import torch
 import time
 import subprocess
 from copy import deepcopy
+import pdb
 
 
 def get_plot_config(args):
@@ -63,7 +64,7 @@ class TrainingHelper:
                                          else None)
         self.arg_parser.add_argument("-name", type=str, help="Train dir name")
         self.arg_parser.add_argument("-reset", default=False, help="reset training - ignore saves", save=False)
-        self.arg_parser.add_argument("-log", default="tb")
+        self.arg_parser.add_argument("-log", default="wandb")
         self.arg_parser.add_argument("-save_interval", default="5000", parser=self.arg_parser.int_or_none_parser)
         self.arg_parser.add_argument("-wandb_save_interval", default="None", parser=self.arg_parser.int_or_none_parser)
         self.arg_parser.add_argument("-seed", default="none", parser=self.arg_parser.int_or_none_parser)
@@ -124,6 +125,8 @@ class TrainingHelper:
             self.args.reset = False
 
         self.use_tensorboard, self.use_wandb = get_plot_config(self.args)
+        #pdb.set_trace()
+        self.use_tensorboard, self.use_wandb = False, True
 
         constructor = plot.AsyncLogger if self.log_async else plot.Logger
 

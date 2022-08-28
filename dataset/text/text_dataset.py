@@ -210,7 +210,8 @@ class TextDataset(torch.utils.data.Dataset):
 
     def start_test(self) -> TextSequenceTestState:
         return TextSequenceTestState(lambda x: " ".join(self.in_vocabulary(x)), 
-                                     lambda x: " ".join(self.out_vocabulary(x)))
+                                     lambda x: " ".join(self.out_vocabulary(x)),
+                                     dataset=str(self.__class__))
 
     @property
     def max_in_len(self) -> int:
