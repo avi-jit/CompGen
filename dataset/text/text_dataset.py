@@ -8,13 +8,14 @@ from typing import List, Dict, Any, Tuple
 from ..sequence import TextSequenceTestState
 
 IndexTable = Dict[str, Dict[str, List[int]]]
-VERSION = 5
-
+#VERSION = 1
+import random
 
 class TextDatasetCache:
     version: int
     in_sentences: List[List[int]]
-    out_sentences: List[List[int]]
+    #out_sentences: List[List[int]]
+    out_sentences: List[List[List[int]]]
 
     index_table: IndexTable
     in_vocabulary: WordVocabulary
@@ -26,29 +27,36 @@ class TextDatasetCache:
     max_out_len: int
 
     def build(self, index_table: IndexTable, in_sentences: List[str], out_sentences: List[str],
-              split_punctuation: bool = True):
-        self.version = VERSION
+              split_punctuation: bool = True, permute_factor: int = 1, iso_factor: int = 1):
+        #self.version = VERSION
+        #self.version = permute_factor * iso_factor * -1
+        self.version = f'P{permute_factor}.I{iso_factor}'
         self.index_table = index_table
 
         print("Constructing vocabularies")
         self.in_vocabulary = WordVocabulary(in_sentences, split_punctuation=split_punctuation)
-        self.out_vocabulary = WordVocabulary(out_sentences, split_punctuation=split_punctuation)
+        #self.out_vocabulary = WordVocabulary(out_sentences, split_punctuation=split_punctuation)
+        self.out_vocabulary = WordVocabulary([s[0] for s in out_sentences], split_punctuation=split_punctuation)
 
         self.in_sentences = [self.in_vocabulary(s) for s in in_sentences]
-        self.out_sentences = [self.out_vocabulary(s) for s in out_sentences]
+        #self.out_sentences = [self.out_vocabulary(s) for s in out_sentences]
+        self.out_sentences = [[self.out_vocabulary(s) for s in s_] for s_ in out_sentences]
 
         print("Calculating length statistics")
-        counts, bins = np.histogram([len(i)+len(o) for i, o in zip(self.in_sentences, self.out_sentences)])
+        #counts, bins = np.histogram([len(i)+len(o) for i, o in zip(self.in_sentences, self.out_sentences)])
+        counts, bins = np.histogram([len(i)+len(o[0]) for i, o in zip(self.in_sentences, self.out_sentences)])
         self.sum_len_histogram = {k: v for k, v in zip(bins.tolist(), counts.tolist())}
 
         counts, bins = np.histogram([len(i) for i in self.in_sentences])
         self.in_len_histogram = {k: v for k, v in zip(bins.tolist(), counts.tolist())}
 
-        counts, bins = np.histogram([len(o) for o in self.out_sentences])
+        #counts, bins = np.histogram([len(o) for o in self.out_sentences])
+        counts, bins = np.histogram([len(o[0]) for o in self.out_sentences])
         self.out_len_histogram = {k: v for k, v in zip(bins.tolist(), counts.tolist())}
 
         self.max_in_len = max(len(l) for l in self.in_sentences)
-        self.max_out_len = max(len(l) for l in self.out_sentences)
+        #self.max_out_len = max(len(l) for l in self.out_sentences)
+        self.max_out_len = max(len(l[0]) for l in self.out_sentences)
         print("Done.")
 
         return self
@@ -69,9 +77,9 @@ class TextDatasetCache:
         }
 
     def load_state_dict(self, data: Dict[str, Any]):
-        self.version = data.get("version", -1)
-        if self.version != VERSION:
-            return
+        self.version = data.get("version", 100)
+        #if self.version != VERSION:
+            #return
         self.index_table = data["index"]
         self.in_vocabulary = WordVocabulary(None)
         self.out_vocabulary = WordVocabulary(None)
@@ -118,6 +126,8 @@ class TextDataset(torch.utils.data.Dataset):
         
         if os.path.isfile(cache_file):
             res = self.load_cache_file(cache_file)
+            #VERSION = self.iso_factor * self.permute_factor * -1
+            VERSION = f'P{self.permute_factor}.I{self.iso_factor}'
             if res.version == VERSION:
                 return res
             else:
@@ -134,10 +144,9 @@ class TextDataset(torch.utils.data.Dataset):
         percent = (np.cumsum(values) * (100.0 / sum(histogram.values()))).tolist()
         return ", ".join(f"{k:.1f}: {v} (>= {p:.1f}%)" for k, v, p in zip(keys, values, percent))
      
-    def __init__(self, sets: List[str] = ["train"], split_type: List[str] = ["simple"], cache_dir: str = "./cache/",
-                 shared_vocabulary: bool = False):
+    def __init__(self, sets: List[str] = ["train"], split_type: List[str] = ["simple"], cache_dir: str = "./cache/", shared_vocabulary: bool = False, permute_factor: int = 1, iso_factor: int = 1):
         super().__init__()
-
+        self.permute_factor = permute_factor; self.iso_factor = iso_factor
         self.cache_dir = os.path.join(cache_dir, self.__class__.__name__)
         os.makedirs(self.cache_dir, exist_ok=True)
 
@@ -180,7 +189,8 @@ class TextDataset(torch.utils.data.Dataset):
 
     def get_seqs(self, abs_index: int) -> Tuple[List[int], List[int]]:
         in_seq = self._cache.in_sentences[abs_index]
-        out_seq = self._cache.out_sentences[abs_index]
+        #out_seq = self._cache.out_sentences[abs_index]
+        out_seq = random.choice(self._cache.out_sentences[abs_index])
 
         if self.shared_vocabulary:
             in_seq = [self.in_remap[i] for i in in_seq]

@@ -89,6 +89,7 @@ class TextSequenceTestState(SequenceTestState):
             self.dataset = 'none'
         self.permuted_acc = 0
         self.isomorphic_acc = 0
+        self.flexible_acc = 0
         
     def set_eos_to_neginf(self, scores: torch.Tensor) -> torch.Tensor:
         id = self.eos_id if self.eos_id >= 0 else (scores.shape[-1] + self.eos_id)
@@ -123,7 +124,7 @@ class TextSequenceTestState(SequenceTestState):
     def get_wheres(self, text):
         wheres = re.findall('WHERE { .*? }', text)
         if len(wheres) != 1:
-            return -1
+            return -1, -1
         wheres = wheres[0]
         remaining = text.replace(wheres,'')
         splits = wheres[8:-2].split(' . ')
@@ -165,11 +166,11 @@ class TextSequenceTestState(SequenceTestState):
                     if set(out_wheres) == set(ref_wheres) and out_rem == ref_rem:
                         permuted = True
                 
-                t_out = t_out.split(' ')
-                t_ref = t_ref.split(' ')
-                if len(t_out) == len(t_ref) and ref_rem == out_rem:
+                t_out_ = t_out.split(' ')
+                t_ref_ = t_ref.split(' ')
+                if len(t_out_) == len(t_ref_) and ref_rem == out_rem:
                     map1 = {}; map2 = {}; isomorphic = True
-                    for w1,w2 in zip(t_ref,t_out):
+                    for w1,w2 in zip(t_ref_,t_out_):
                         if w1 != w2 and (w1[:2] != '?x' or w2[:2] != '?x'):
                             isomorphic = False; break
                         if (w1 in map1 and map1[w1] != w2) or (w2 in map2 and map2[w2] != w1):
@@ -179,11 +180,13 @@ class TextSequenceTestState(SequenceTestState):
     
             elif self.dataset == 'COGS':
                 ...
-            if isomorphic:
+            if isomorphic and t_ref != t_out:
                 self.isomorphic_acc += 1
-            if permuted:
+            if permuted and t_ref != t_out:
                 self.permuted_acc += 1
-            if not permuted and not isomorphic:
+            if isomorphic or permuted or t_ref == t_out:
+                self.flexible_acc += 1
+            else:
                 self.bad_sequences.append(s)
 
         if False: #if len(self.bad_sequences) < self.max_bad_samples:
@@ -213,6 +216,8 @@ class TextSequenceTestState(SequenceTestState):
         res["accuracy/prefix"] = self.n_prefix_ok / self.n_total
         res["accuracy/permuted"] = self.permuted_acc / self.n_total
         res["accuracy/isomorphic"] = self.isomorphic_acc / self.n_total
+        res["accuracy/flexible"] = self.flexible_acc / self.n_total
+        
         if self.oracle_available:
             res["accuracy/oracle"] = self.n_oracle_ok / self.n_total
 

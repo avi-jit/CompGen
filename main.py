@@ -40,6 +40,8 @@ def register_args(parser: framework.helpers.ArgumentParser):
                                                                 "mcd3"])
     parser.add_argument("-max_length_per_batch", default="none", parser=parser.int_or_none_parser)
     parser.add_argument("-log_sample_level_loss", default=False)
+    parser.add_argument("-permute_factor", default=1)
+    parser.add_argument("-iso_factor", default=1)
 
     parser.add_profile([
         parser.Profile("cfq_trafo", {

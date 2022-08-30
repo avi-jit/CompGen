@@ -7,6 +7,8 @@ from typing import Tuple, List
 import os
 import tarfile
 
+import regex as re
+import random
 
 class CFQ(TextDataset):
     URL = "https://storage.cloud.google.com/cfq_dataset/cfq1.1.tar.gz"
@@ -43,6 +45,8 @@ class CFQ(TextDataset):
         inputs = []
         outputs = []
 
+        self.VARS = [f'?x{i}' for i in range(6)]
+
         with open(fname, "r") as f:
             data = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
             pbar = tqdm(total=len(data))
@@ -59,13 +63,47 @@ class CFQ(TextDataset):
                     offset = new_offset
                 d = json.loads(this.decode())
                 inputs.append(self.tokenize_punctuation(d["questionPatternModEntities"]))
-                outputs.append(self.preprocess_sparql(d["sparqlPatternModEntities"]))
+                #outputs.append(self.preprocess_sparql(d["sparqlPatternModEntities"]))
+                outputs.append(self.get_perm_iso(self.preprocess_sparql(d["sparqlPatternModEntities"])))
 
                 cnt += 1
                 if pos < 0:
                     break
 
         return inputs, outputs
+
+    def get_permutes(self, text):
+        outputs = []
+        wheres = re.findall('WHERE { .*? }', text)
+        wheres = wheres[0]
+        #remaining = text.replace(wheres,'')
+        splits = wheres[8:-2].split(' . ')
+        for i in range(self.permute_factor):
+            outputs.append(text.replace(wheres, 'WHERE { ' + ' . '.join(splits) + ' }'))
+            random.shuffle(splits) # shuffling after appending so permute_factor 1 = original dataset.
+        return outputs
+
+    def get_iso(self, text):
+        #return text
+        map_in = list(set(re.findall("\?x\d+", text)))
+        temp = [f'@{i}' for i in range(len(map_in))]
+        map_out = random.sample(self.VARS, len(map_in))
+        for old_,new_ in zip(map_in, temp):
+            text = text.replace(f' {old_} ', f' {new_} ')
+        for old_,new_ in zip(temp, map_out):
+            text = text.replace(f' {old_} ', f' {new_} ')
+        return text
+        
+        
+    def get_perm_iso(self, text):
+        outputs = []
+        outputs.extend(self.get_permutes(text))
+        isoutputs = []
+        for out in outputs:
+            isoutputs.append(out) # iso_factor 1 is original only
+            for i in range(self.iso_factor-1):
+                isoutputs.append(self.get_iso(out))
+        return isoutputs
 
     def build_cache(self) -> TextDatasetCache:
         index_table = {}
@@ -96,4 +134,5 @@ class CFQ(TextDataset):
 
         in_sentences, out_sentences = self.load_data(os.path.join(self.cache_dir, "cfq/dataset.json"))
         assert len(in_sentences) == len(out_sentences)
-        return TextDatasetCache().build(index_table, in_sentences, out_sentences, split_punctuation=False)
+        return TextDatasetCache().build(index_table, in_sentences, out_sentences, split_punctuation=False,
+                    permute_factor=self.permute_factor, iso_factor=self.iso_factor)

@@ -14,7 +14,8 @@ class CFQTransformer(TransformerMixin, Task):
 
     def create_datasets(self):
         self.batch_dim = 1
-        self.train_set = dataset.CFQ(["train"], split_type=[self.helper.args.cfq.split])
+        self.train_set = dataset.CFQ(["train"], split_type=[self.helper.args.cfq.split],
+            permute_factor=self.helper.args.permute_factor, iso_factor=self.helper.args.permute_factor)
         self.valid_sets.val = dataset.CFQ(["val"], split_type=[self.helper.args.cfq.split])
         self.valid_sets.test = dataset.CFQ(["test"], split_type=[self.helper.args.cfq.split])
 
