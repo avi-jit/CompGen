@@ -157,7 +157,8 @@ class TrainingHelper:
                                         wandb_extra_config={
                                             "experiment_name": self.args.name
                                         },
-                                        get_global_step = lambda: self.state.iter)
+                                        get_global_step = lambda: self.state.iter,
+                                        name_args=self.args)
 
         if self.use_wandb:
             self.print_env_info()

@@ -1,3 +1,4 @@
+from unicodedata import name
 import torch
 import os
 import numpy as np
@@ -276,6 +277,14 @@ class Logger:
         if self.use_wandb:
             import wandb
             wandb.init(**self.wandb_init_args)
+            try:
+                if 'cfq' in self.name_args['task'] or 'cfq' in self.name_args['name']:
+                    prepend = f"CFQ_{self.name_args['cfq']['split']}"
+                elif 'cogs' in self.name_args['task'] or 'cogs' in self.name_args['name']:
+                    prepend = f"COGS_{self.name_args['cogs']['split']}"
+                wandb.run.name = f"{prepend} P{self.name_args['permute_factor']}.I{self.name_args['iso_factor']} bs_{self.name_args['batch_size']} lr_{self.name_args['lr']} {'-'.join(wandb.run.name.split('-')[:2])}"  # seed_{self.name_args['seed']} 
+            except:
+                pass
             self.wandb_id = {
                 "sweep_id": wandb.run.sweep_id,
                 "run_id": wandb.run.id
@@ -297,12 +306,14 @@ class Logger:
             self.summary_writer = None
 
     def __init__(self, save_dir: Optional[str] = None, use_tb: bool = False, use_wandb: bool = False,
-                 get_global_step: Optional[Callable[[], int]] = None, wandb_init_args={}, wandb_extra_config={}):
+                 get_global_step: Optional[Callable[[], int]] = None, wandb_init_args={}, wandb_extra_config={},
+                 name_args=None):
         global plt
         global wandb
 
         import_matplotlib()
 
+        self.name_args = name_args
         self.use_wandb = use_wandb
         self.use_tb = use_tb
         self.save_dir = save_dir
