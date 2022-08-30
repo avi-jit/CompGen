@@ -4,6 +4,8 @@ from typing import Tuple, Dict, Any, Optional, Callable, List
 import torch
 import torch.nn.functional as F
 
+import regex as re
+
 class SequenceTestState:
     def __init__(self, batch_dim: int = 1):
         self.n_ok = 0
@@ -76,12 +78,18 @@ class TextSequenceTestState(SequenceTestState):
         self.oks = []
         if 'CFQ' in dataset:
             self.dataset = 'CFQ'
+            self.wheres = 0
+            self.inv_wheres = 0
+            self.triples = 0
+            self.inv_triples = 0
         elif 'COGS' in dataset:
             self.dataset = 'COGS'
+            
         else:
             self.dataset = 'none'
+        self.permuted_acc = 0
+        self.isomorphic_acc = 0
         
-
     def set_eos_to_neginf(self, scores: torch.Tensor) -> torch.Tensor:
         id = self.eos_id if self.eos_id >= 0 else (scores.shape[-1] + self.eos_id)
         return scores.index_fill(-1, torch.tensor([id], device=scores.device), float("-inf"))
@@ -112,6 +120,15 @@ class TextSequenceTestState(SequenceTestState):
                                tolist())
         return t_in, t_ref, t_out
 
+    def get_wheres(self, text):
+        wheres = re.findall('WHERE { .*? }', text)
+        if len(wheres) != 1:
+            return -1
+        wheres = wheres[0]
+        remaining = text.replace(wheres,'')
+        splits = wheres[8:-2].split(' . ')
+        return splits, remaining
+
     def step(self, net_out: Tuple[torch.Tensor, Optional[torch.Tensor]], data: Dict[str, torch.Tensor]):
         ok_mask = self.compare_output(net_out, data)
         scores, _ = net_out
@@ -133,12 +150,41 @@ class TextSequenceTestState(SequenceTestState):
             t_in, t_ref, t_out = self.sample_to_text(net_out, data, i)
             s = [t_in, t_ref, t_out]
 
+            isomorphic = False; permuted = False;
             if self.dataset == 'CFQ':
-                ...
+                ref_wheres, ref_rem = self.get_wheres(t_ref)
+                try:
+                    out_wheres, out_rem = self.get_wheres(t_out)
+                except:
+                    out_wheres = -1; out_rem = ''
+                if out_wheres == -1:
+                    self.inv_wheres += 1
+                else:
+                    self.inv_triples += len([_ for _ in out_wheres if len(_.split(' ')) != 3])
+                    self.triples += len(out_wheres)
+                    if set(out_wheres) == set(ref_wheres) and out_rem == ref_rem:
+                        permuted = True
+                
+                t_out = t_out.split(' ')
+                t_ref = t_ref.split(' ')
+                if len(t_out) == len(t_ref) and ref_rem == out_rem:
+                    map1 = {}; map2 = {}; isomorphic = True
+                    for w1,w2 in zip(t_ref,t_out):
+                        if w1 != w2 and (w1[:2] != '?x' or w2[:2] != '?x'):
+                            isomorphic = False; break
+                        if (w1 in map1 and map1[w1] != w2) or (w2 in map2 and map2[w2] != w1):
+                            isomorphic = False; break
+                        map1[w1] = w2
+                        map2[w2] = w1
+    
             elif self.dataset == 'COGS':
                 ...
-
-            self.bad_sequences.append(s)
+            if isomorphic:
+                self.isomorphic_acc += 1
+            if permuted:
+                self.permuted_acc += 1
+            if not permuted and not isomorphic:
+                self.bad_sequences.append(s)
 
         if False: #if len(self.bad_sequences) < self.max_bad_samples:
             t = torch.nonzero(~ok_mask).squeeze(-1)[:self.max_bad_samples - len(self.bad_sequences)]
@@ -165,7 +211,8 @@ class TextSequenceTestState(SequenceTestState):
         res["mistake_examples"] = framework.visualize.plot.TextTable(["Input", "Reference", "Output"],
                                                                      self.bad_sequences)
         res["accuracy/prefix"] = self.n_prefix_ok / self.n_total
-
+        res["accuracy/permuted"] = self.permuted_acc / self.n_total
+        res["accuracy/isomorphic"] = self.isomorphic_acc / self.n_total
         if self.oracle_available:
             res["accuracy/oracle"] = self.n_oracle_ok / self.n_total
 
