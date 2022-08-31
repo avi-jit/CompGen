@@ -72,6 +72,7 @@ class Task:
         self.create_datasets()
         self.create_loaders()
         self.model = self.create_model()
+        print(f"Total number of model parameters: {sum(p.numel() for p in self.model.parameters())}")
         self.model = self.model.to(self.helper.device)
         self.create_model_interface()
         self.create_optimizer()
@@ -79,8 +80,7 @@ class Task:
         self.scaler = torch.cuda.amp.GradScaler(enabled=self.amp_enabled)
         self.helper.saver["scaler"] = self.scaler
 
-        print(f"Total number of model parameters: {sum(p.numel() for p in self.model.parameters())}")
-
+        
         self.helper.saver["model"] = self.model
         self.helper.restore()
 
