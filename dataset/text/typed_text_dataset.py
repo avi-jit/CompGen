@@ -4,9 +4,7 @@ import numpy as np
 
 
 class TypedTextDatasetCache(TextDatasetCache):
-    def build(self, index_table: IndexTable, in_sentences: List[str], out_sentences: List[str], types: List[int],
-              type_names: List[str]):
-
+    def build(self, index_table: IndexTable, in_sentences: List[str], out_sentences: List[List[str]], types: List[int], type_names: List[str]):
         super().build(index_table, in_sentences, out_sentences)
         self.types = types
         self.type_names = type_names
@@ -35,8 +33,8 @@ class TypedTextDataset(TextDataset):
     def build_cache(self) -> TypedTextDatasetCache:
         raise NotImplementedError()
 
-    def __init__(self, sets: List[str] = ["train"], cache_dir: str = "./cache/", shared_vocabulary: bool = False):
-        super().__init__(sets, ["default"], cache_dir, shared_vocabulary)
+    def __init__(self, sets: List[str] = ["train"], cache_dir: str = "./cache/", shared_vocabulary: bool = False, permute_factor: int = 1, iso_factor: int = 1, num_examples: int = None):
+        super().__init__(sets, ["default"], cache_dir, shared_vocabulary, permute_factor=permute_factor, iso_factor=iso_factor, num_examples=num_examples)
 
     def __getitem__(self, item: int) -> Dict[str, Any]:
         index = self.my_indices[item]

@@ -26,7 +26,7 @@ class TextDatasetCache:
     max_in_len: int
     max_out_len: int
 
-    def build(self, index_table: IndexTable, in_sentences: List[str], out_sentences: List[str],
+    def build(self, index_table: IndexTable, in_sentences: List[str], out_sentences: List[List[str]],
               split_punctuation: bool = True, permute_factor: int = 1, iso_factor: int = 1):
         #self.version = VERSION
         #self.version = permute_factor * iso_factor * -1
@@ -144,7 +144,7 @@ class TextDataset(torch.utils.data.Dataset):
         percent = (np.cumsum(values) * (100.0 / sum(histogram.values()))).tolist()
         return ", ".join(f"{k:.1f}: {v} (>= {p:.1f}%)" for k, v, p in zip(keys, values, percent))
      
-    def __init__(self, sets: List[str] = ["train"], split_type: List[str] = ["simple"], cache_dir: str = "./cache/", shared_vocabulary: bool = False, permute_factor: int = 1, iso_factor: int = 1):
+    def __init__(self, sets: List[str] = ["train"], split_type: List[str] = ["simple"], cache_dir: str = "./cache/", shared_vocabulary: bool = False, permute_factor: int = 1, iso_factor: int = 1, num_examples: int = None):
         super().__init__()
         self.permute_factor = permute_factor; self.iso_factor = iso_factor
         self.cache_dir = os.path.join(cache_dir, self.__class__.__name__)
@@ -183,7 +183,7 @@ class TextDataset(torch.utils.data.Dataset):
         self.my_indices = []
         for t in split_type:
             for s in sets:
-                self.my_indices += self._cache.index_table[t][s]
+                self.my_indices += self._cache.index_table[t][s][:num_examples]
 
         self.shared_vocabulary = shared_vocabulary
 

@@ -10,8 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
-            "args": ["--name", "cogs_trafo", "--profile", "pcfg_trafo", "--task", "cogs_transformer", "--log", "tb",
-                     "--keep_alive", "1", "-reset", "1", "-stop_after", "1000000"]
+            "args": ["--name", "cogs_trafo", "--profile", "pcfg_trafo", "--task", "cogs_transformer", "--log", "wandb", "--keep_alive", "1", "-reset", "1", "-stop_after", "100000", "-permute_factor", "1", "-iso_factor", "1", "-num_examples", "1000"]
         },
 
         {

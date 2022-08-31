@@ -278,9 +278,9 @@ class Logger:
             import wandb
             wandb.init(**self.wandb_init_args)
             try:
-                if 'cfq' in self.name_args['task'] or 'cfq' in self.name_args['name']:
+                if 'cfq' in self.name_args['task'].lower() or 'cfq' in self.name_args['name'].lower():
                     prepend = f"CFQ_{self.name_args['cfq']['split']}"
-                elif 'cogs' in self.name_args['task'] or 'cogs' in self.name_args['name']:
+                elif 'cogs' in self.name_args['task'].lower() or 'cogs' in self.name_args['name'].lower():
                     prepend = f"COGS_{self.name_args['cogs']['split']}"
                 wandb.run.name = f"{prepend} P{self.name_args['permute_factor']}.I{self.name_args['iso_factor']} bs_{self.name_args['batch_size']} lr_{self.name_args['lr']} {'-'.join(wandb.run.name.split('-')[:2])}"  # seed_{self.name_args['seed']} 
             except:

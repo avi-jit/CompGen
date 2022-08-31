@@ -93,17 +93,16 @@ class CFQ(TextDataset):
         for old_,new_ in zip(temp, map_out):
             text = text.replace(f' {old_} ', f' {new_} ')
         return text
-        
-        
+
     def get_perm_iso(self, text):
         outputs = []
-        outputs.extend(self.get_permutes(text))
+        outputs.extend(list(set(self.get_permutes(text)))) # could be fewer than max
         isoutputs = []
         for out in outputs:
             isoutputs.append(out) # iso_factor 1 is original only
             for i in range(self.iso_factor-1):
                 isoutputs.append(self.get_iso(out))
-        return isoutputs
+        return list(set(isoutputs)) # could be fewer than max
 
     def build_cache(self) -> TextDatasetCache:
         index_table = {}

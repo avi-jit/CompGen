@@ -168,7 +168,7 @@ class TextSequenceTestState(SequenceTestState):
                 
                 t_out_ = t_out.split(' ')
                 t_ref_ = t_ref.split(' ')
-                if len(t_out_) == len(t_ref_) and ref_rem == out_rem:
+                if len(t_out_) == len(t_ref_):
                     map1 = {}; map2 = {}; isomorphic = True
                     for w1,w2 in zip(t_ref_,t_out_):
                         if w1 != w2 and (w1[:2] != '?x' or w2[:2] != '?x'):
@@ -179,7 +179,17 @@ class TextSequenceTestState(SequenceTestState):
                         map2[w2] = w1
     
             elif self.dataset == 'COGS':
-                ...
+                t_out_ = t_out.split(' ')
+                t_ref_ = t_ref.split(' ')
+                if len(t_out_) == len(t_ref_):
+                    map1 = {}; map2 = {}; isomorphic = True
+                    for w1,w2 in zip(t_ref_,t_out_):
+                        if w1 != w2 and (not w1.isnumeric() or not w2.isnumeric()):
+                            isomorphic = False; break
+                        if (w1 in map1 and map1[w1] != w2) or (w2 in map2 and map2[w2] != w1):
+                            isomorphic = False; break
+                        map1[w1] = w2
+                        map2[w2] = w1
             if isomorphic and t_ref != t_out:
                 self.isomorphic_acc += 1
             if permuted and t_ref != t_out:

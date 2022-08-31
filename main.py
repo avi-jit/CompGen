@@ -42,6 +42,7 @@ def register_args(parser: framework.helpers.ArgumentParser):
     parser.add_argument("-log_sample_level_loss", default=False)
     parser.add_argument("-permute_factor", default=1)
     parser.add_argument("-iso_factor", default=1)
+    parser.add_argument("-num_examples", type=int)
 
     parser.add_profile([
         parser.Profile("cfq_trafo", {

@@ -14,9 +14,10 @@ class COGSTransformer(TransformerMixin, Task):
 
     def create_datasets(self):
         self.batch_dim = 1
-        self.train_set = dataset.COGS(["train"], shared_vocabulary=True)
+        self.train_set = dataset.COGS(["train"], shared_vocabulary=True,
+            permute_factor=self.helper.args.permute_factor, iso_factor=self.helper.args.iso_factor)
         self.valid_sets.val = dataset.COGS(["valid"], shared_vocabulary=True)
-        self.slow_valid_set = dataset.COGS(["gen"], shared_vocabulary=True)
+        self.slow_valid_set = dataset.COGS(["gen"], shared_vocabulary=True, num_examples=self.helper.args.num_examples)
 
     def create_loaders(self):
         super().create_loaders()
